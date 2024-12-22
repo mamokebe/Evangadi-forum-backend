@@ -52,7 +52,7 @@ const newQuestion = async (req, res) => {
 const allQuestion = async (req, res) => {
   try {
     // get all questions with user details from the database
-    const [allQuestions] = await dbConnection.query(
+    const [questions] = await dbConnection.query(
       "SELECT q.questionId, q.title, q.description, q.userId, q.create_at, u.userName, u.firstName, u.lastName, (SELECT COUNT(*) FROM answers WHERE answers.questionId = q.questionId) AS total_answers FROM questions AS q JOIN users AS u ON q.userId = u.userId"
     );
     //  handle this validation at front end to display msg for user
@@ -64,8 +64,12 @@ const allQuestion = async (req, res) => {
     //     message: "There is no questions found.",
     //   });
     //}
-    console.log(allQuestions);
-    return res.status(StatusCode.OK).json(allQuestions);
+    // console.log(questions);
+    return res.status(StatusCode.OK).json({
+      success: true,
+      count: questions.length, // Number of questions
+      data: questions, // Array of questions
+    });
   } catch (error) {
     console.error(error.message);
     return res.status(StatusCode.INTERNAL_SERVER_ERROR).json({
