@@ -109,5 +109,34 @@ const singleQuestion = async (req, res) => {
     });
   }
 };
+//function searching question
+const SearchQuestion = async (req, res) => {
+  // Access the path parameter
+  const title = req.params.title;
+  console.log(`Searching for title: ${title}`);
+  try {
+    const [searchQuestion] = await dbConnection.query(
+      "SELECT q.questionId, q.title, q.description, u.userName, q.create_at FROM questions AS q JOIN users AS u ON u.userId = q.userId WHERE q.title LIKE ? OR q.description LIKE ?",
+      [`%${title}%`, `%${title}%`]
+    );
 
-export { newQuestion, allQuestion, singleQuestion };
+    // // Check if questions were found
+    // if (searchQuestion.length === 0) {
+    //   return res.status(StatusCode.NOT_FOUND).json({
+    //     success: false,
+    //     message: "No questions matching the title were found.",
+    //   });
+    // }
+
+    // Return the questions
+    console.log(searchQuestion);
+    return res.status(StatusCode.OK).json(searchQuestion);
+  } catch (error) {
+    console.error("Error occurred:", error); // Log the error for debugging
+    return res.status(StatusCode.INTERNAL_SERVER_ERROR).json({
+      message: "An unexpected error occurred.",
+    });
+  }
+};
+
+export { newQuestion, allQuestion, singleQuestion, SearchQuestion };

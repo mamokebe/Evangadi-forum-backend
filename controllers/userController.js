@@ -146,7 +146,7 @@ const registerUser = async (req, res) => {
       `INSERT INTO users(userName, firstName, lastName, email, password) VALUES (?, ?, ?, ?, ?)`,
       [userName, firstName, lastName, email, hashedPassword]
     );
-
+    console.log(userId);
     const [data] = await dbConnection.query(`SELECT * FROM users`);
 
     // After saving user, create a JWT token

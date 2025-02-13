@@ -3,6 +3,7 @@ import {
   allQuestion,
   singleQuestion,
   newQuestion,
+  SearchQuestion,
 } from "../controllers/questionController.js";
 
 const questionRouter = express.Router();
@@ -17,5 +18,8 @@ questionRouter.get("/question/:questionId", singleQuestion);
 //create a new question
 questionRouter.post("/question", newQuestion);
 //request body ---> title, description
+
+//search question
+questionRouter.get("questions/:title", SearchQuestion);
 
 export default questionRouter;

@@ -18,6 +18,7 @@ answerRouter.post("/answer", postAnswer);
 
 //delete answer by user
 answerRouter.delete("/answer/:userId", deleteAnswerByUser);
+// answerRouter.delete("/answers/:questionId/:userId", deleteAnswerByUser);
 //userId ---> url parameters
 
 export default answerRouter;
