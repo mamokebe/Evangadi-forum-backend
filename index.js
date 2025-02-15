@@ -16,7 +16,10 @@ import authMiddleware from "./middleware/auth.js";
 const app = express();
 dotenv.config();
 const port = 4500;
-const allowedOrigins = ["https://evangadi-forum-qa.netlify.app"];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://evangadi-forum-qa.netlify.app",
+];
 //middleware to captures all the information entered in an HTML form and parses them in an object form.
 app.use(body_parser.urlencoded({ extended: true }));
 //middleware (initialize middleware used to parse any request using json )

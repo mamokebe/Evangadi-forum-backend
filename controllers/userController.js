@@ -4,6 +4,10 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import StatusCode from "http-status-codes";
 import "dotenv/config";
+import transport from "../db/nodemailer.js";
+import dotenv from "dotenv";
+import { PASSWORD_RESET_TEMPLATE } from "../db/emailTemplates.js";
+dotenv.config();
 
 const loginUser = async (req, res) => {
   //destructuring from req.body
@@ -93,12 +97,6 @@ const loginUser = async (req, res) => {
   //   return jwt.sign({ userid }, process.env.JWT_SECRET);
   // };
 };
-
-//create token for user using jwt by using userName & userId as parameter & return it
-// const createToken = (name, id) => {
-//   return jwt.sign({ name, id }, process.env.JWT_SECRET);
-// };
-
 const registerUser = async (req, res) => {
   const { userName, firstName, lastName, email, password } = req.body;
   //Validation
@@ -146,7 +144,7 @@ const registerUser = async (req, res) => {
       `INSERT INTO users(userName, firstName, lastName, email, password) VALUES (?, ?, ?, ?, ?)`,
       [userName, firstName, lastName, email, hashedPassword]
     );
-    console.log(userId);
+    // console.log(userId);
     const [data] = await dbConnection.query(`SELECT * FROM users`);
 
     // After saving user, create a JWT token
@@ -154,6 +152,16 @@ const registerUser = async (req, res) => {
     const token = jwt.sign({ userName, userId }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
+    //sending well come email
+    // const email = data[data.length - 1].email;
+    const mailOptionals = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Well come to Evangadi forum ",
+      text: `Well come to Evangadi forum website.  Your account has been created with email id: ${email}.  You can ask programming related question and give answer for any asked questions on this website `,
+    };
+
+    await transport.sendMail(mailOptionals);
 
     return res.status(StatusCode.OK).json({
       data: data[data.length - 1],
@@ -167,7 +175,6 @@ const registerUser = async (req, res) => {
     });
   }
 };
-
 const checkUser = async (req, res) => {
   const userName = req.user.userName;
   const userId = req.user.userId;
@@ -186,5 +193,106 @@ const logoutUser = (req, res) => {
     message: "Successfully logged out",
   });
 };
+//send password reset OTP
+const sendResetOtp = async (req, res) => {
+  // to reset password user have to provide Email
+  const { email } = req.body;
+  console.log(email);
+  if (!email) {
+    return res.json({ success: false, message: "Email is required" });
+  }
+  try {
+    // const user = await userModel.findOne({ email });
+    const [user] = await dbConnection.query(
+      `SELECT * FROM users WHERE email = ?`,
+      [email]
+    );
+    if (user.length == 0) {
+      return res.json({ success: false, message: "User not find" });
+    }
+    //generate 6 digit random number and convert to string
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const resetOtp = otp;
+    const resetOtpExpireAt = Date.now() + 15 * 60 * 1000; //15 min expire
 
-export { loginUser, registerUser, checkUser, logoutUser };
+    await dbConnection.query(
+      `UPDATE users SET resetOtp=?, resetOtpExpireAt=? where email=?`,
+      [resetOtp, resetOtpExpireAt, email]
+    );
+
+    const mailOption = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Password Reset OTP ",
+      // text: `Your OTP for resetting your password is ${otp}.  Use this OTP to proceed with resetting your password `,
+      html: PASSWORD_RESET_TEMPLATE.replace("{{otp}}", otp).replace(
+        "{{email}}",
+        email
+      ),
+    };
+    console.log(email);
+    await transport.sendMail(mailOption);
+    return res.status(StatusCode.OK).json({
+      success: true,
+      message: "OTP sent to your email",
+      // data: data[data.length - 1],
+      // token: token,
+    });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+//Reset user  password r
+const resetPassword = async (req, res) => {
+  // to reset password user have to provide Email
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return res.json({ success: false, message: "Fields required" });
+  }
+  try {
+    //find user by email from db
+    // const user = await userModel.findOne({ email });
+    const [user] = await dbConnection.query(
+      `SELECT * FROM users WHERE email = ?`,
+      [email]
+    );
+    if (user.length == 0) {
+      return res.json({ success: false, message: "User not found" });
+    }
+    console.log(user[0].resetOtp);
+    //if resetOtp (user input otp) is empty or not  match with db otp
+    if (user[0].resetOtp === null || user[0].resetOtp !== otp) {
+      return res.json({ success: false, message: "Invalid OTP" });
+    }
+    //if OTP valid and check the expire date
+    if (user.resetOtpExpireAt < Date.now()) {
+      return res.json({ success: false, message: "OTP Expired" });
+    }
+    //if not expired and valid otp then update user password account
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const password = hashedPassword;
+    const resetOtp = null;
+    const resetOtpExpireAt = 0;
+    await dbConnection.query(
+      `UPDATE users SET resetOtp=?, resetOtpExpireAt=?, password=? where email=?`,
+      [resetOtp, resetOtpExpireAt, password, email]
+    );
+    console.log(email);
+    return res.json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+export {
+  loginUser,
+  registerUser,
+  checkUser,
+  logoutUser,
+  sendResetOtp,
+  resetPassword,
+};

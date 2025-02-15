@@ -4,6 +4,8 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  resetPassword,
+  sendResetOtp,
 } from "../controllers/userController.js";
 import authMiddleware from "../middleware/auth.js";
 
@@ -20,5 +22,8 @@ userRouter.get("/check", authMiddleware, checkUser);
 
 //logout user route (delete method)
 userRouter.delete("/logout", logoutUser);
+
+userRouter.post("/send-reset-otp", sendResetOtp);
+userRouter.post("/reset-password", resetPassword);
 
 export default userRouter;
